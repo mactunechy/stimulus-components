@@ -13,7 +13,7 @@ export default class Tabs extends Controller {
   static targets = ["tablist", "tab", "panel"]
 
   static values = {
-    activation: { type: String, default: "automatic" },
+    activation: { type: String, default: "auto" },
     orientation: { type: String, default: "horizontal" },
   }
 

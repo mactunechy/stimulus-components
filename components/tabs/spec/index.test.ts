@@ -55,6 +55,9 @@ describe("initialization", () => {
     expect(tabs().map((tab) => tab.getAttribute("aria-selected"))).toEqual(["true", "false", "false", "false"])
     expect(tabs().map((tab) => tab.tabIndex)).toEqual([0, -1, -1, -1])
     expect(panels().map((panel) => panel.hidden)).toEqual([false, true, true, true])
+    const generatedIds = [...tabs(), ...panels()].map((element) => element.id)
+    expect(generatedIds.every(Boolean)).toBe(true)
+    expect(new Set(generatedIds).size).toBe(generatedIds.length)
     expect(tabs()[0].getAttribute("aria-controls")).toBe(panels()[0].id)
     expect(panels()[0].getAttribute("aria-labelledby")).toBe(tabs()[0].id)
     expect(panels().every((panel) => panel.getAttribute("role") === "tabpanel")).toBe(true)
@@ -176,7 +179,7 @@ describe("keyboard navigation", () => {
 })
 
 describe("dynamic targets", () => {
-  it("selects a remaining tab when the active targets are removed", async () => {
+  it("selects an enabled remaining tab when the active targets are removed", async () => {
     await render()
     tabs()[1].click()
 
@@ -184,7 +187,13 @@ describe("dynamic targets", () => {
     panels()[1].remove()
     await flush()
 
-    expect(tabs()[0].getAttribute("aria-selected")).toBe("true")
-    expect(panels()[0].hidden).toBe(false)
+    const selected = tabs().filter((tab) => tab.getAttribute("aria-selected") === "true")
+    const visible = panels().filter((panel) => !panel.hidden)
+    const selectedPanel = document.getElementById(selected[0]?.getAttribute("aria-controls") ?? "")
+
+    expect(selected).toHaveLength(1)
+    expect(selected[0].hasAttribute("disabled")).toBe(false)
+    expect(selected[0].tabIndex).toBe(0)
+    expect(visible).toEqual([selectedPanel])
   })
 })

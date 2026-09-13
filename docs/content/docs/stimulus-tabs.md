@@ -47,7 +47,7 @@ Existing tab and panel IDs are preserved. You can explicitly associate tabs and 
 
 | Attribute                     | Default       | Description                                                    | Optional |
 | ----------------------------- | ------------- | -------------------------------------------------------------- | -------- |
-| `data-tabs-activation-value`  | `automatic`   | Use `manual` to require Enter or Space after keyboard movement. | ✅       |
+| `data-tabs-activation-value`  | `auto`        | Use `manual` to require Enter or Space after keyboard movement. | ✅       |
 | `data-tabs-orientation-value` | `horizontal`  | Use `vertical` to navigate with Up and Down.                    | ✅       |
 
 ## Extending Controller
