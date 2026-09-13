@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <title>Stimulus Tabs</title>
 
@@ -20,13 +20,25 @@
     <main class="mx-auto mt-16 max-w-3xl px-4">
       <div data-controller="tabs">
         <div data-tabs-target="tablist" aria-label="Account settings" class="flex border-b border-gray-200">
-          <button data-tabs-target="tab" class="px-4 py-2 font-medium aria-selected:border-b-2 aria-selected:border-blue-600">
+          <button
+            data-tabs-target="tab"
+            data-action="click->tabs#select keydown->tabs#navigate"
+            class="px-4 py-2 font-medium aria-selected:border-b-2 aria-selected:border-blue-600"
+          >
             Account
           </button>
-          <button data-tabs-target="tab" class="px-4 py-2 font-medium aria-selected:border-b-2 aria-selected:border-blue-600">
+          <button
+            data-tabs-target="tab"
+            data-action="click->tabs#select keydown->tabs#navigate"
+            class="px-4 py-2 font-medium aria-selected:border-b-2 aria-selected:border-blue-600"
+          >
             Password
           </button>
-          <button data-tabs-target="tab" class="px-4 py-2 font-medium aria-selected:border-b-2 aria-selected:border-blue-600">
+          <button
+            data-tabs-target="tab"
+            data-action="click->tabs#select keydown->tabs#navigate"
+            class="px-4 py-2 font-medium aria-selected:border-b-2 aria-selected:border-blue-600"
+          >
             Billing
           </button>
         </div>

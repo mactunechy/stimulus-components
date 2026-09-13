@@ -22,9 +22,9 @@ Add `tablist`, `tab`, and `panel` targets in matching order. The controller supp
 ```html
 <div data-controller="tabs">
   <div data-tabs-target="tablist" aria-label="Account settings">
-    <button data-tabs-target="tab">Account</button>
-    <button data-tabs-target="tab">Password</button>
-    <button data-tabs-target="tab">Billing</button>
+    <button data-tabs-target="tab" data-action="click->tabs#select keydown->tabs#navigate">Account</button>
+    <button data-tabs-target="tab" data-action="click->tabs#select keydown->tabs#navigate">Password</button>
+    <button data-tabs-target="tab" data-action="click->tabs#select keydown->tabs#navigate">Billing</button>
   </div>
 
   <section data-tabs-target="panel">Account settings</section>
@@ -43,12 +43,19 @@ For vertical tabs, set `data-tabs-orientation-value="vertical"`. Up and Down rep
 
 Existing tab and panel IDs are preserved. You can explicitly associate tabs and panels that are not in matching order with `aria-controls`.
 
+Tabs controllers can be nested. Each controller manages only its own targets, so interactions and dynamic updates in a nested group do not change its parent group.
+
+Set `data-tabs-url-value="true"` to synchronize selection with the URL hash. A matching panel ID is selected on connection and on `hashchange`, while selecting a tab updates the hash. Unknown panel IDs and panels belonging to disabled tabs are ignored.
+
+The controller dispatches a cancelable `tabs:before-change` event before an interaction changes the selected tab, followed by `tabs:change` after a successful change. Both events bubble and provide the previous and next tab as `event.detail.from` and `event.detail.to`. Canceling `tabs:before-change` leaves the current selection unchanged.
+
 ## Configuration
 
-| Attribute                     | Default       | Description                                                    | Optional |
-| ----------------------------- | ------------- | -------------------------------------------------------------- | -------- |
-| `data-tabs-activation-value`  | `auto`        | Use `manual` to require Enter or Space after keyboard movement. | ✅       |
-| `data-tabs-orientation-value` | `horizontal`  | Use `vertical` to navigate with Up and Down.                    | ✅       |
+| Attribute                     | Default      | Description                                                     | Optional |
+| ----------------------------- | ------------ | --------------------------------------------------------------- | -------- |
+| `data-tabs-activation-value`  | `auto`       | Use `manual` to require Enter or Space after keyboard movement. | ✅       |
+| `data-tabs-orientation-value` | `horizontal` | Use `vertical` to navigate with Up and Down.                    | ✅       |
+| `data-tabs-url-value`         | `false`      | Synchronize the selected panel with the URL hash.               | ✅       |
 
 ## Extending Controller
 

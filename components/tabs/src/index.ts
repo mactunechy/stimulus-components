@@ -2,6 +2,11 @@ import { Controller } from "@hotwired/stimulus"
 
 let instance = 0
 
+type ChangeDetail = {
+  from: HTMLElement | null
+  to: HTMLElement
+}
+
 export default class Tabs extends Controller {
   declare readonly tabTargets: HTMLElement[]
   declare readonly panelTargets: HTMLElement[]
@@ -9,42 +14,53 @@ export default class Tabs extends Controller {
   declare readonly tablistTarget: HTMLElement
   declare readonly activationValue: string
   declare readonly orientationValue: string
+  declare readonly urlValue: boolean
 
   static targets = ["tablist", "tab", "panel"]
 
   static values = {
     activation: { type: String, default: "auto" },
     orientation: { type: String, default: "horizontal" },
+    url: { type: Boolean, default: false },
   }
 
   private connected = false
+  private initialized = false
+  private activeTab: HTMLElement | null = null
   private readonly instanceId = ++instance
 
   initialize(): void {
-    this.select = this.select.bind(this)
-    this.navigate = this.navigate.bind(this)
+    this.syncFromHash = this.syncFromHash.bind(this)
   }
 
   connect(): void {
     this.connected = true
+    if (this.urlValue) window.addEventListener("hashchange", this.syncFromHash)
     this.refresh()
+    this.initialized = true
   }
 
   disconnect(): void {
     this.connected = false
-    this.tabTargets.forEach((tab) => this.removeListeners(tab))
+    this.initialized = false
+    window.removeEventListener("hashchange", this.syncFromHash)
   }
 
-  tabTargetConnected(tab: HTMLElement): void {
-    tab.addEventListener("click", this.select)
-    tab.addEventListener("keydown", this.navigate)
+  urlValueChanged(): void {
+    if (!this.connected) return
 
+    window.removeEventListener("hashchange", this.syncFromHash)
+    if (this.urlValue) {
+      window.addEventListener("hashchange", this.syncFromHash)
+      this.syncFromHash()
+    }
+  }
+
+  tabTargetConnected(): void {
     if (this.connected) this.refresh()
   }
 
-  tabTargetDisconnected(tab: HTMLElement): void {
-    this.removeListeners(tab)
-
+  tabTargetDisconnected(): void {
     if (this.connected) this.refresh()
   }
 
@@ -59,7 +75,7 @@ export default class Tabs extends Controller {
   select(event: Event): void {
     const tab = event.currentTarget
 
-    if (tab instanceof HTMLElement && !this.disabled(tab)) this.activate(tab)
+    if (tab instanceof HTMLElement) this.changeTo(tab)
   }
 
   navigate(event: KeyboardEvent): void {
@@ -69,7 +85,7 @@ export default class Tabs extends Controller {
 
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault()
-      this.activate(tab)
+      this.changeTo(tab)
       return
     }
 
@@ -89,7 +105,7 @@ export default class Tabs extends Controller {
     const nextTab = tabs[(next + tabs.length) % tabs.length]
     nextTab?.focus()
 
-    if (this.activationValue !== "manual" && nextTab) this.activate(nextTab)
+    if (this.activationValue !== "manual" && nextTab) this.changeTo(nextTab)
   }
 
   private refresh(): void {
@@ -116,14 +132,27 @@ export default class Tabs extends Controller {
       panel.setAttribute("aria-labelledby", tab.id)
     })
 
+    const activeStillExists =
+      this.activeTab &&
+      this.tabTargets.indexOf(this.activeTab) >= 0 &&
+      !this.disabled(this.activeTab) &&
+      this.panelFor(this.activeTab)
+    const hashTab = !this.initialized && this.urlValue ? this.tabForHash() : undefined
     const selected = this.tabTargets.find(
       (tab, index) => tab.getAttribute("aria-selected") === "true" && !this.disabled(tab) && this.panelFor(tab, index),
     )
-    const active = selected ?? this.tabTargets.find((tab, index) => !this.disabled(tab) && this.panelFor(tab, index))
+    const active =
+      hashTab ??
+      (activeStillExists ? this.activeTab : undefined) ??
+      selected ??
+      this.tabTargets.find((tab, index) => !this.disabled(tab) && this.panelFor(tab, index))
 
     if (active) {
-      this.activate(active)
+      const repaired = this.initialized && active !== this.activeTab
+      this.applyState(active)
+      if (repaired && this.urlValue) this.updateHash(active)
     } else {
+      this.activeTab = null
       this.panelTargets.forEach((panel) => (panel.hidden = true))
       this.tabTargets.forEach((tab) => {
         tab.setAttribute("aria-selected", "false")
@@ -132,17 +161,65 @@ export default class Tabs extends Controller {
     }
   }
 
-  private activate(active: HTMLElement): void {
+  private changeTo(tab: HTMLElement, updateUrl = true): void {
+    if (this.tabTargets.indexOf(tab) < 0 || this.disabled(tab) || !this.panelFor(tab) || tab === this.activeTab) return
+
+    const detail: ChangeDetail = { from: this.activeTab, to: tab }
+    const before = new CustomEvent<ChangeDetail>("tabs:before-change", {
+      bubbles: true,
+      cancelable: true,
+      detail,
+    })
+
+    if (!this.element.dispatchEvent(before)) return
+
+    this.applyState(tab)
+    if (updateUrl && this.urlValue) this.updateHash(tab)
+    this.element.dispatchEvent(new CustomEvent<ChangeDetail>("tabs:change", { bubbles: true, detail }))
+  }
+
+  private applyState(active: HTMLElement): void {
     const activePanel = this.panelFor(active)
 
     if (!activePanel) return
 
+    this.activeTab = active
     this.panelTargets.forEach((panel) => (panel.hidden = panel !== activePanel))
     this.tabTargets.forEach((tab) => {
       const selected = tab === active
       tab.setAttribute("aria-selected", String(selected))
       tab.tabIndex = selected ? 0 : -1
     })
+  }
+
+  private syncFromHash(): void {
+    const tab = this.tabForHash()
+    if (tab) this.changeTo(tab, false)
+  }
+
+  private tabForHash(): HTMLElement | undefined {
+    let id: string
+
+    try {
+      id = decodeURIComponent(window.location.hash.slice(1))
+    } catch {
+      return
+    }
+
+    if (!id) return
+
+    const panel = this.panelTargets.find((candidate) => candidate.id === id)
+    if (!panel) return
+
+    return this.tabTargets.find((tab, index) => !this.disabled(tab) && this.panelFor(tab, index) === panel)
+  }
+
+  private updateHash(tab: HTMLElement): void {
+    const panel = this.panelFor(tab)
+    if (!panel?.id) return
+
+    const url = `${window.location.pathname}${window.location.search}#${encodeURIComponent(panel.id)}`
+    window.history.replaceState(window.history.state, "", url)
   }
 
   private panelFor(tab: HTMLElement, index = this.tabTargets.indexOf(tab)): HTMLElement | undefined {
@@ -153,10 +230,5 @@ export default class Tabs extends Controller {
 
   private disabled(tab: HTMLElement): boolean {
     return tab.getAttribute("aria-disabled") === "true" || (tab instanceof HTMLButtonElement && tab.disabled)
-  }
-
-  private removeListeners(tab: HTMLElement): void {
-    tab.removeEventListener("click", this.select)
-    tab.removeEventListener("keydown", this.navigate)
   }
 }

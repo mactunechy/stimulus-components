@@ -2,7 +2,7 @@
 
 ## Getting started
 
-An accessible Stimulus controller for tabbed interfaces with automatic and manual keyboard activation.
+An accessible Stimulus controller for nested tabbed interfaces with keyboard activation, URL synchronization, and cancellable change events.
 
 ## 📚 Documentation
 
